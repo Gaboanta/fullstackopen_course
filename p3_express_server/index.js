@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const app = (0, express_1.default)();
-const port = 3001;
+const port = process.env.PORT || 3001;
 let notes = [
     { id: 1, text: 'hello' },
     { id: 2, text: 'house' }
