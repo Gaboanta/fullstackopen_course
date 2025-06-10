@@ -6,7 +6,7 @@ function App() {
 
   // Set countries state by fetching
   useEffect(() => {
-    axios.get('http://localhost:3001/api/notes').then(response => {
+    axios.get('https://fullstackopen-course-backend.onrender.com/api/notes').then(response => {
       setNotes(response.data)
     })
   }, [])
