@@ -4,9 +4,8 @@ import { useEffect, useState } from "react"
 function App() {
   const [notes, setNotes] = useState<any[]>([])
 
-  // Set countries state by fetching
   useEffect(() => {
-    axios.get('https://fullstackopen-course-backend.onrender.com/api/notes').then(response => {
+    axios.get('/api/notes').then(response => {
       setNotes(response.data)
     })
   }, [])

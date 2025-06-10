@@ -12,6 +12,7 @@ let notes = [
 // Add middleware
 app.use(cors())
 app.use(express.json())
+app.use(express.static('dist'))
 
 // Add routes
 app.get('/api/notes/:id', (req, res) => {
