@@ -1,56 +1,98 @@
+import { config } from 'dotenv';
+config() // Set environment variables to process.env from .env file
 import express from 'express';
 import cors from 'cors';
+import NoteModel from './models/note';
+import mongoose from 'mongoose';
 
+// Declare variables
 const app = express()
-const port = process.env.PORT || 3001
-
-let notes = [
-  { id: 1, text: 'hello' },
-  { id: 2, text: 'house' }
-]
+const port = process.env.PORT
 
 // Add middleware
+// Custom logger
+app.use((req, res, next) => {
+  const time = new Date().toLocaleTimeString()
+  const data = JSON.stringify(req.body)
+  console.log(`${time}: ${req.method}  ${req.hostname}  ${req.path}`);
+  if (data)
+    console.log(`\tData: ${data}`)
+  next()
+})
 app.use(cors())
 app.use(express.json())
 app.use(express.static('dist'))
 
-// Add routes
-app.get('/api/notes/:id', (req, res) => {
-  const id = req.params.id
-  const note = notes.find(n => n.id.toString() === id)
-  if (note)
-    res.json(note)
-  else {
-    res.statusMessage = `Note with id ${id} does not exist`
-    res.status(404).end()
-  }
-})
-
+// Create routes
+// Route to get all notes
 app.get('/api/notes', (req, res) => {
-  res.json(notes)
+  NoteModel.find({}).then(notes => {
+    res.json(notes)
+  })
 })
-
+// Route to get note by id
+app.get('/api/notes/:id', (req, res) => {
+  NoteModel.findById(req.params.id).then(foundNote => {
+    if (!foundNote) {
+      res.status(404).json({ error: "That note doesn't exist" })
+      return
+    }
+    res.json(foundNote)
+  }).catch(error => {
+    res.status(400).json({ error: error })
+  })
+})
+// Route to add new note
 app.post('/api/notes', (req, res) => {
   let note = req.body
-  const currentIds = notes.map(n => n.id)
-  const maxId = Math.max(...currentIds)
-  if ('text' in note) {
-    note = { id: maxId + 1, text: note.text }
-    notes.push(note)
-
-    console.log(`Added note: ${JSON.stringify(note)}`);
-    res.json(note)
+  if (typeof note !== 'object' || !Object.hasOwn(note, 'content') || !Object.hasOwn(note, 'important')) {
+    res.status(400).json(
+      { error: "Invalid data. Note must be an object with 'content' (string) and 'important' (boolean) properties" })
+    return
   }
-  res.end()
-})
 
+  const newNote = new NoteModel({
+    content: note.content,
+    important: note.important
+  })
+
+  newNote.save().then(savedNote => {
+    res.json(savedNote)
+  })
+})
+// Route to delete specific note
 app.delete('/api/notes/:id', (req, res) => {
   const id = req.params.id
-  notes = notes.filter(n => n.id.toString() !== id)
-  res.status(204).end()
-  console.log(`Deleted note with id ${id} (if it existed)`);
+  NoteModel.findByIdAndDelete(id).then(deletedNote => {
+    if (deletedNote) {
+      res.json(deletedNote)
+      return
+    }
+    res.json({ error: `That note was already deleted or did not exist` })
+  }).catch(error => {
+    res.status(400).json({ error: error })
+  })
 })
 
-app.listen(port, (err) => {
-  console.log(`Express server running on port ${port}`);
+// Start Express server
+const server = app.listen(port, error => {
+  console.log(`Express server is running on port ${port}`);
+})
+
+// Handle exit process gracefully
+function exitProcess(code = 0) {
+  server.close(() => {
+    mongoose.disconnect().then(() => {
+      console.log('Server and db closed');
+      process.exit(code)
+    })
+  })
+}
+// SIGTERM is emitted when a process manager stops the process 
+process.on('SIGTERM', () => {
+  exitProcess()
+})
+// SIGINT is emitted when user presses Ctrl+C in terminal
+process.on('SIGINT', () => {
+  exitProcess()
 })
